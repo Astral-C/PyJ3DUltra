@@ -1,6 +1,6 @@
 ## PyJ3DUltra
 
-Python bindings for J3DUltra by [https://github.com/Sage-of-Mirrors](Sage of Mirrors)
+Python bindings for J3DUltra by [Sage of Mirrors](https://github.com/Sage-of-Mirrors)
 
 ### How to build
 Clone repo with `git clone --recursive https://github.com/Astral-C/PyJ3DUltra.git`
