@@ -1,0 +1,23 @@
+# CMake Files
+CMakeFiles/
+cmake_install.cmake
+CMakeCache.txt
+
+# Build files
+Makefile
+*.so
+
+# Don't include any virtual envs
+venv/
+
+# VSCode stuff
+.vscode
+
+# Test Models
+*.bmd
+*.bdl
+
+# Python / test stuff
+__pycache__
+test/J3DUltra
+test/pybind11
