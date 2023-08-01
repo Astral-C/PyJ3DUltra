@@ -52,17 +52,10 @@ std::shared_ptr<J3DModelInstance> LoadJ3DModel(std::string filepath){
     }
 
     J3DModelLoader Loader;
-    std::cout << "Opening file " << filepath << "..." << std::endl;
 	bStream::CFileStream modelStream(filepath, bStream::Endianess::Big, bStream::OpenMode::In);
 	
-    std::cout << "Creating shared pointer for model data" << std::endl;
-	
     std::shared_ptr<J3DModelData> data = std::make_shared<J3DModelData>();
-
-    std::cout << "Loading model..." << std::endl;
 	data = Loader.Load(&modelStream, NULL);
-
-    std::cout << "Loaded model, returning instance" << std::endl;
 
     return data->GetInstance();
 }
@@ -77,6 +70,7 @@ PYBIND11_MODULE(J3DUltra, m) {
     py::class_<J3DModelInstance, std::shared_ptr<J3DModelInstance>>(m, "J3DModelInstance")
         .def(py::init<std::shared_ptr<J3DModelData>>())
         .def("render", &J3DModelInstance::Render)
+        // These don't work yet
         .def("setTranslation", &J3DModelInstance::SetTranslation)
         .def("setRotation", &J3DModelInstance::SetRotation)
         .def("setScale", &J3DModelInstance::SetScale);
@@ -85,5 +79,5 @@ PYBIND11_MODULE(J3DUltra, m) {
 
     m.def("init", &InitJ3DUltra, "Setup J3DUltra for Model Loading and Rendering");
     m.def("cleanup", &CleanupJ3DUltra, "Cleanup J3DUltra Library");
-    m.def("setCamera", &SetCamera, "Set Camera Matrices");
+    m.def("setCamera", &SetCamera, "Set Projection and View Matrices to render with");
 }
