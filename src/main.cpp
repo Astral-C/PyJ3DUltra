@@ -55,21 +55,35 @@ void CleanupJ3DUltra(){
     }
 }
 
-std::shared_ptr<J3DModelInstance> LoadJ3DModel(std::string filepath){
+std::shared_ptr<J3DModelInstance> LoadJ3DModel(std::string path){
     if(!init) return nullptr;
 
-    if(!std::filesystem::exists(filepath)){
-        std::cout << "Couldn't load model " << filepath << std::endl;
+    if(!std::filesystem::exists(path)){
+        std::cout << "Couldn't load model " << path << std::endl;
         return nullptr;
     }
 
     J3DModelLoader Loader;
-    bStream::CFileStream modelStream(filepath, bStream::Endianess::Big, bStream::OpenMode::In);
+    bStream::CFileStream modelStream(path, bStream::Endianess::Big, bStream::OpenMode::In);
     
     std::shared_ptr<J3DModelData> data = std::make_shared<J3DModelData>();
     data = Loader.Load(&modelStream, NULL);
 
     return data->GetInstance();
+}
+
+std::shared_ptr<J3DModelInstance> LoadJ3DModel(py::bytes data){
+    if(!init) return nullptr;
+
+    py::buffer_info dataInfo(py::buffer(data).request());
+
+    J3DModelLoader Loader;
+    bStream::CMemoryStream modelStream((uint8_t*)dataInfo.ptr, dataInfo.size, bStream::Endianess::Big, bStream::OpenMode::In);
+    
+    std::shared_ptr<J3DModelData> modelData = std::make_shared<J3DModelData>();
+    modelData = Loader.Load(&modelStream, NULL);
+
+    return modelData->GetInstance();
 }
 
 void setTranslation(std::shared_ptr<J3DModelInstance> instance, float x, float y, float z){
@@ -87,6 +101,28 @@ void setScale(std::shared_ptr<J3DModelInstance> instance, float x, float y, floa
 PYBIND11_MODULE(J3DUltra, m) {
     m.doc() = "J3DUltra";
 
+    py::class_<glm::vec3>(m, "Vec3")
+        .def(py::init([](){ return glm::vec3(0.0); }))
+        .def(py::init([](float x, float y, float z){ return glm::vec3(x,y,z);} ))
+        .def_readwrite("x", &glm::vec3::x)
+        .def_readwrite("y", &glm::vec3::y)
+        .def_readwrite("z", &glm::vec3::z)
+        .def_readwrite("r", &glm::vec3::r)
+        .def_readwrite("g", &glm::vec3::g)
+        .def_readwrite("b", &glm::vec3::b);
+
+    py::class_<glm::vec4>(m, "Vec4")
+        .def(py::init([](){ return glm::vec4(0.0); }))
+        .def(py::init([](float x, float y, float z, float w){ return glm::vec4(x,y,z,w);} ))
+        .def_readwrite("x", &glm::vec4::x)
+        .def_readwrite("y", &glm::vec4::y)
+        .def_readwrite("z", &glm::vec4::z)
+        .def_readwrite("w", &glm::vec4::w)
+        .def_readwrite("r", &glm::vec4::r)
+        .def_readwrite("g", &glm::vec4::g)
+        .def_readwrite("b", &glm::vec4::b)
+        .def_readwrite("a", &glm::vec4::a);
+
     py::class_<J3DLight>(m, "J3DLight")
         .def(py::init<>())
         .def(py::init([](std::array<float, 3> position, std::array<float, 3> direction, std::array<float, 4> color, std::array<float, 3> angle_atten, std::array<float, 3> dist_atten){
@@ -99,7 +135,12 @@ PYBIND11_MODULE(J3DUltra, m) {
             light.DistAtten = glm::vec4(dist_atten[0], dist_atten[1], dist_atten[2], 1);;
 
             return light;
-        }));
+        }))
+        .def_readwrite("position", &J3DLight::Position)
+        .def_readwrite("direction", &J3DLight::Direction)
+        .def_readwrite("color", &J3DLight::Color)
+        .def_readwrite("dist_atten", &J3DLight::DistAtten)
+        .def_readwrite("angle_atten", &J3DLight::AngleAtten);
 
     py::class_<J3DModelData, std::shared_ptr<J3DModelData>>(m, "J3DModelData")
         .def(py::init<>())
@@ -113,7 +154,8 @@ PYBIND11_MODULE(J3DUltra, m) {
         .def("setRotation", &setRotation)
         .def("setScale", &setScale);
 
-    m.def("loadModel", &LoadJ3DModel, "Load a BMD/BDL Model");
+    m.def("loadModel", py::overload_cast<std::string>(&LoadJ3DModel), "Load BMD/BDL from filepath", py::kw_only(), pybind11::arg("path"));
+    m.def("loadModel", py::overload_cast<py::bytes>(&LoadJ3DModel), "Load BMD/BDL from bytes object", py::kw_only(), pybind11::arg("data"));
 
     m.def("init", &InitJ3DUltra, "Setup J3DUltra for Model Loading and Rendering");
     m.def("cleanup", &CleanupJ3DUltra, "Cleanup J3DUltra Library");

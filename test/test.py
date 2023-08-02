@@ -9,6 +9,8 @@ from pyrr import matrix44, Matrix44, Vector4, Vector3, Quaternion
 import J3DUltra as ultra
 from J3DUltra import J3DLight
 
+from math import sin, cos, radians
+
 def window_resize(window, width, height):
     glViewport(0, 0, width, height)
 
@@ -85,7 +87,7 @@ if(not ultra.init()):
     raise Exception("Couldn't init J3DUltra")
 
 light1 = J3DLight([0, 0, 0], [0, 0, 0], [1, 1, 1, 1], [1, 1, 1], [1, 1, 1])
-light2 = J3DLight([0, 100, 0], [0, 0, 0], [1, 1, 1, 1], [1, 1, 0], [1, 1, 1])
+light2 = J3DLight([0, 0, 0], [0, 0, 0], [1, 1, 1, 1], [1, 1, 1], [1, 1, 1])
 light3 = J3DLight([0, 0, 0], [1, -0.868448, 0.239316], [1, 1, 1, 1], [1, 1, 1], [1, 1, 1])
 
 ultra.setLight(light1, 0)
@@ -94,16 +96,22 @@ ultra.setLight(light3, 2)
 
 
 #test = J3DUltra.J3DModelData()
-test = ultra.loadModel("penguin.bdl")
-model2 = ultra.loadModel("us_denchi_1.bmd")
+penguin = ultra.loadModel(path="penguin.bdl")
 
-model2.setTranslation(200.0, 0.0, 0.0)
-model2.setRotation(90.0, 150.0, 0.0)
-model2.setScale(2.0, 2.0, 2.0)
+modelFile = open("us_denchi_1.bmd", 'rb')
+modelData = modelFile.read()
+
+batteryModel = ultra.loadModel(data=bytes(modelData))
+
+batteryModel.setTranslation(200.0, 0.0, 0.0)
+batteryModel.setRotation(0.0, 0.0, 0.0)
+batteryModel.setScale(2.0, 5.0, 2.0)
 
 glClearColor(0.25, 0.3, 0.4, 1.0)
 
 proj = matrix44.create_perspective_projection_matrix(45.0, 1280/720, 0.1, 100000.0)
+
+theta = 0.0
 
 while(not glfw.window_should_close(window)):
     glfw.poll_events()
@@ -113,16 +121,21 @@ while(not glfw.window_should_close(window)):
 
     view = cam.get_view_matrix()
 
+    penguin.setTranslation(cos(theta)*5, 0.0, sin(theta)*5)
+
+    theta += 0.1
+
     ultra.setCamera(
         proj.ravel().tolist(),
         view.ravel().tolist()
     )
 
-    if(test != None):
-        test.render(0.0)
+    if(penguin != None):
+        penguin.render(0.0)
 
-    if(model2 != None):
-        model2.render(0.0)
+    if(batteryModel != None):
+        batteryModel.render(0.0)
+
 
     glfw.swap_buffers(window)
 
