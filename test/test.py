@@ -67,7 +67,7 @@ glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
 glfw.window_hint(glfw.OPENGL_DEBUG_CONTEXT, glfw.TRUE)
 glfw.window_hint(glfw.DEPTH_BITS, 24)
 
-window = glfw.create_window(1280, 720, "J3DUltra Test", None, None)
+window = glfw.create_window(1280, 720, "PyJ3DUltra Test", None, None)
 
 if(not window):
     glfw.terminate()
@@ -79,6 +79,33 @@ glfw.set_window_size_callback(window, window_resize)
 glfw.set_key_callback(window, key_callback)
 glfw.set_cursor_pos_callback(window, mouse_callback)
 
+light1 = ultra.makeLight(
+    [0, 0, 0],
+    [0, 0, 0],
+    [1, 1, 1, 1], 
+    [1, 0, 0],
+    [1, 0, 0]
+)
+
+light2 = ultra.makeLight(
+    [1, 0, 0],
+    [0, 0, 0],
+    [1, 1, 1, 1], 
+    [1, 0, 0],
+    [1, 0, 0]
+)
+
+light3 = ultra.makeLight(
+    [0, 0, 0],
+    [1, -0.868448, 0.239316],
+    [1, 1, 1, 1], 
+    [25, 0, -24],
+    [0, 0, 1]
+)
+
+ultra.setLight(light1, 0)
+ultra.setLight(light2, 1)
+ultra.setLight(light3, 2)
 
 if(not ultra.init()):
     glfw.terminate()
