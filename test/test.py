@@ -67,7 +67,7 @@ glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
 glfw.window_hint(glfw.OPENGL_DEBUG_CONTEXT, glfw.TRUE)
 glfw.window_hint(glfw.DEPTH_BITS, 24)
 
-window = glfw.create_window(1280, 720, "PyJ3DUltra Test", None, None)
+window = glfw.create_window(1280, 720, "J3DUltra Test", None, None)
 
 if(not window):
     glfw.terminate()
@@ -80,7 +80,7 @@ glfw.set_key_callback(window, key_callback)
 glfw.set_cursor_pos_callback(window, mouse_callback)
 
 light1 = ultra.makeLight(
-    [0, 0, 0],
+    [0, 1000, 0],
     [0, 0, 0],
     [1, 1, 1, 1], 
     [1, 0, 0],
@@ -104,8 +104,8 @@ light3 = ultra.makeLight(
 )
 
 ultra.setLight(light1, 0)
-ultra.setLight(light2, 1)
-ultra.setLight(light3, 2)
+ultra.setLight(light2, 0)
+ultra.setLight(light3, 0)
 
 if(not ultra.init()):
     glfw.terminate()
@@ -114,6 +114,12 @@ if(not ultra.init()):
 
 #test = J3DUltra.J3DModelData()
 test = ultra.loadModel("penguin.bdl")
+model2 = ultra.loadModel("us_denchi_1.bmd")
+
+model2.setTranslation(200.0, 0.0, 0.0)
+model2.setRotation(90.0, 150.0, 0.0)
+model2.setScale(2.0, 2.0, 2.0)
+
 glClearColor(0.25, 0.3, 0.4, 1.0)
 
 proj = matrix44.create_perspective_projection_matrix(45.0, 1280/720, 0.1, 100000.0)
@@ -133,6 +139,9 @@ while(not glfw.window_should_close(window)):
 
     if(test != None):
         test.render(0.0)
+
+    if(model2 != None):
+        model2.render(0.0)
 
     glfw.swap_buffers(window)
 
