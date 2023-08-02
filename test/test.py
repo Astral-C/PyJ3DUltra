@@ -7,6 +7,7 @@ from OpenGL.GL.shaders import compileProgram, compileShader
 from pyrr import matrix44, Matrix44, Vector4, Vector3, Quaternion
 
 import J3DUltra as ultra
+from J3DUltra import J3DLight
 
 def window_resize(window, width, height):
     glViewport(0, 0, width, height)
@@ -83,29 +84,9 @@ if(not ultra.init()):
     glfw.terminate()
     raise Exception("Couldn't init J3DUltra")
 
-light1 = ultra.makeLight(
-    [0, 0, 0],
-    [0, 0, 0],
-    [1, 1, 1, 1], 
-    [1, 0, 0],
-    [1, 0, 0]
-)
-
-light2 = ultra.makeLight(
-    [1, 0, 0],
-    [0, 0, 0],
-    [1, 1, 1, 1], 
-    [1, 0, 0],
-    [1, 0, 0]
-)
-
-light3 = ultra.makeLight(
-    [0, 0, 0],
-    [1, -0.868448, 0.239316],
-    [1, 1, 1, 1], 
-    [25, 0, -24],
-    [0, 0, 1]
-)
+light1 = J3DLight([0, 0, 0], [0, 0, 0], [1, 1, 1, 1], [1, 1, 1], [1, 1, 1])
+light2 = J3DLight([0, 100, 0], [0, 0, 0], [1, 1, 1, 1], [1, 1, 0], [1, 1, 1])
+light3 = J3DLight([0, 0, 0], [1, -0.868448, 0.239316], [1, 1, 1, 1], [1, 1, 1], [1, 1, 1])
 
 ultra.setLight(light1, 0)
 ultra.setLight(light2, 1)
