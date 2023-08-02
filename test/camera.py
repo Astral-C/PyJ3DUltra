@@ -1,80 +1,36 @@
-from pyrr import Vector3, Matrix44, vector, vector3
-from math import sin, cos, radians
+import numpy as np
+import pyrr
 
+class OrbitCamera:
+    def __init__(self, distance=10.0, pitch=0.0, yaw=0.0, target=np.zeros(3)):
+        self.distance = distance
+        self.pitch = pitch
+        self.yaw = yaw
+        self.target = target
+        self.update()
 
-class Camera:
-    def __init__(self):
-        self.camera_pos = Vector3([0.0, 0.0, 3.0])
-        self.camera_front = Vector3([0.0, 0.0, -1.0])
-        self.camera_up = Vector3([0.0, 1.0, 0.0])
-        self.camera_right = Vector3([1.0, 0.0, 0.0])
+    def update(self):
+        # Calculate the camera's position based on distance, pitch, and yaw
+        cos_pitch = np.cos(np.radians(self.pitch))
+        sin_pitch = np.sin(np.radians(self.pitch))
+        cos_yaw = np.cos(np.radians(self.yaw))
+        sin_yaw = np.sin(np.radians(self.yaw))
 
-        self.mouse_sensitivity = 0.25
-        self.yaw = -90.0
-        self.pitch = 0.0
+        offset = self.distance * np.array([cos_pitch * sin_yaw, sin_pitch, cos_pitch * cos_yaw])
+        self.position = self.target + offset
 
-    def get_view_matrix(self):
-        return self.look_at(self.camera_pos, self.camera_pos + self.camera_front, self.camera_up)
+        # Calculate the view matrix
+        self.view_matrix = pyrr.matrix44.create_look_at(self.position, self.target, [0, 1, 0])
 
-    def process_keyboard(self, direction, velocity):
-        if direction == "FORWARD":
-            self.camera_pos += self.camera_front * velocity
-        if direction == "BACKWARD":
-            self.camera_pos -= self.camera_front * velocity
-        if direction == "LEFT":
-            self.camera_pos -= self.camera_right * velocity
-        if direction == "RIGHT":
-            self.camera_pos += self.camera_right * velocity
+    def rotate(self, d_pitch, d_yaw):
+        self.pitch += d_pitch
+        self.yaw += d_yaw
+        self.update()
 
-    def process_mouse_movement(self, xoffset, yoffset, constrain_pitch=True):
-        xoffset *= self.mouse_sensitivity
-        yoffset *= self.mouse_sensitivity
+    def zoom(self, delta_distance):
+        self.distance -= delta_distance
+        self.update()
 
-        self.yaw += xoffset
-        self.pitch += yoffset
-
-        if constrain_pitch:
-            if self.pitch > 45.0:
-                self.pitch = 45.0
-            if self.pitch < -45.0:
-                self.pitch = -45.0
-
-        self.update_camera_vectors()
-
-    def update_camera_vectors(self):
-        front = Vector3([0.0, 0.0, 0.0])
-        front.x = cos(radians(self.yaw)) * cos(radians(self.pitch))
-        front.y = sin(radians(self.pitch))
-        front.z = sin(radians(self.yaw)) * cos(radians(self.pitch))
-
-        self.camera_front = vector.normalise(front)
-        self.camera_right = vector.normalise(vector3.cross(self.camera_front, Vector3([0.0, 1.0, 0.0])))
-        self.camera_up = vector.normalise(vector3.cross(self.camera_right, self.camera_front))
-
-    def look_at(self, position, target, world_up):
-        # 1.Position = known
-        # 2.Calculate cameraDirection
-        zaxis = vector.normalise(position - target)
-        # 3.Get positive right axis vector
-        xaxis = vector.normalise(vector3.cross(vector.normalise(world_up), zaxis))
-        # 4.Calculate the camera up vector
-        yaxis = vector3.cross(zaxis, xaxis)
-
-        # create translation and rotation matrix
-        translation = Matrix44.identity()
-        translation[3][0] = -position.x
-        translation[3][1] = -position.y
-        translation[3][2] = -position.z
-
-        rotation = Matrix44.identity()
-        rotation[0][0] = xaxis[0]
-        rotation[1][0] = xaxis[1]
-        rotation[2][0] = xaxis[2]
-        rotation[0][1] = yaxis[0]
-        rotation[1][1] = yaxis[1]
-        rotation[2][1] = yaxis[2]
-        rotation[0][2] = zaxis[0]
-        rotation[1][2] = zaxis[1]
-        rotation[2][2] = zaxis[2]
-
-        return translation * rotation
+    def set_target(self, target):
+        self.target = target
+        self.update()
