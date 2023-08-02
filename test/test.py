@@ -79,8 +79,12 @@ glfw.set_window_size_callback(window, window_resize)
 glfw.set_key_callback(window, key_callback)
 glfw.set_cursor_pos_callback(window, mouse_callback)
 
+if(not ultra.init()):
+    glfw.terminate()
+    raise Exception("Couldn't init J3DUltra")
+
 light1 = ultra.makeLight(
-    [0, 1000, 0],
+    [0, 0, 0],
     [0, 0, 0],
     [1, 1, 1, 1], 
     [1, 0, 0],
@@ -104,12 +108,8 @@ light3 = ultra.makeLight(
 )
 
 ultra.setLight(light1, 0)
-ultra.setLight(light2, 0)
-ultra.setLight(light3, 0)
-
-if(not ultra.init()):
-    glfw.terminate()
-    raise Exception("Couldn't init J3DUltra")
+ultra.setLight(light2, 1)
+ultra.setLight(light3, 2)
 
 
 #test = J3DUltra.J3DModelData()

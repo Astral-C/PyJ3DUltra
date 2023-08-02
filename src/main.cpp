@@ -13,14 +13,23 @@
 #include <glm/gtc/type_ptr.hpp>
 
 namespace py = pybind11;
+using namespace py::literals;
 
 static bool init = false;
+static J3DLight lights[8] = {};
 
 bool InitJ3DUltra(){
     if(!init){
         if(gladLoadGL()){
+ 
             J3DUniformBufferObject::CreateUBO();
+ 
             init = true;
+ 
+         	for (int i = 0; i < 8; i++)
+        		lights[i].Color = glm::vec4(1, 1, 1, 1);
+
+            J3DUniformBufferObject::SetLights(lights);
             return true;
         }
     }
@@ -35,6 +44,23 @@ void SetCamera(std::vector<float> proj, std::vector<float> view){
     viewm4 = glm::make_mat4(view.data());
 
     J3DUniformBufferObject::SetProjAndViewMatrices(&projection, &viewm4);
+}
+
+void SetLight(J3DLight light, int lightIdx){
+    lights[lightIdx] = light;
+    J3DUniformBufferObject::SetLights(lights);
+}
+
+J3DLight MakeLight(std::array<float, 3> position, std::array<float, 3> direction, std::array<float, 4> color, std::array<float, 3> angle_atten, std::array<float, 3> dist_atten){
+    J3DLight light;
+
+	light.Position = glm::vec4(position[0], position[1], position[2], 1);
+	light.Direction = glm::vec4(direction[0], direction[1], direction[2], 1);
+	light.Color = glm::vec4(color[0], color[1], color[2], color[3]);
+	light.AngleAtten = glm::vec4(angle_atten[0], angle_atten[1], angle_atten[2], 1);;
+	light.DistAtten = glm::vec4(dist_atten[0], dist_atten[1], dist_atten[2], 1);;
+
+    return light;
 }
 
 void CleanupJ3DUltra(){
@@ -60,8 +86,22 @@ std::shared_ptr<J3DModelInstance> LoadJ3DModel(std::string filepath){
     return data->GetInstance();
 }
 
+void setTranslation(std::shared_ptr<J3DModelInstance> instance, float x, float y, float z){
+    instance->SetTranslation(glm::vec3(x, y, z));
+}
+
+void setRotation(std::shared_ptr<J3DModelInstance> instance, float x, float y, float z){
+    instance->SetRotation(glm::vec3(x, y, z));
+}
+
+void setScale(std::shared_ptr<J3DModelInstance> instance, float x, float y, float z){
+    instance->SetScale(glm::vec3(x, y, z));
+}
+
 PYBIND11_MODULE(J3DUltra, m) {
     m.doc() = "J3DUltra";
+
+    py::class_<J3DLight>(m, "J3DLight").def(py::init<>());
 
     py::class_<J3DModelData, std::shared_ptr<J3DModelData>>(m, "J3DModelData")
         .def(py::init<>())
@@ -71,13 +111,15 @@ PYBIND11_MODULE(J3DUltra, m) {
         .def(py::init<std::shared_ptr<J3DModelData>>())
         .def("render", &J3DModelInstance::Render)
         // These don't work yet
-        .def("setTranslation", &J3DModelInstance::SetTranslation)
-        .def("setRotation", &J3DModelInstance::SetRotation)
-        .def("setScale", &J3DModelInstance::SetScale);
+        .def("setTranslation", &setTranslation)
+        .def("setRotation", &setRotation)
+        .def("setScale", &setScale);
 
     m.def("loadModel", &LoadJ3DModel, "Load a BMD/BDL Model");
 
     m.def("init", &InitJ3DUltra, "Setup J3DUltra for Model Loading and Rendering");
     m.def("cleanup", &CleanupJ3DUltra, "Cleanup J3DUltra Library");
     m.def("setCamera", &SetCamera, "Set Projection and View Matrices to render with");
+    m.def("setLight", &SetLight, "Set Scene Light for J3D Render Functions");
+    m.def("makeLight", &MakeLight, "Create J3D Light");
 }
