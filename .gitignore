@@ -21,3 +21,6 @@ venv/
 __pycache__
 test/J3DUltra
 test/pybind11
+
+# configs
+*.ini

@@ -14,6 +14,8 @@ from tkinter.filedialog import askopenfilename
 import J3DUltra as ultra
 from J3DUltra import J3DLight
 
+import pyjkernel
+
 # Hide root window
 Tk().withdraw()
 
@@ -44,12 +46,16 @@ if(not ultra.init()):
     raise Exception("Couldn't init J3DUltra")
 
 light1 = J3DLight([0, 0, 0], [0, 0, 0], [1, 1, 1, 1], [1, 1, 1], [1, 1, 1])
-light2 = J3DLight([0, 0, 0], [0, 0, 0], [1, 1, 1, 1], [1, 1, 1], [1, 1, 1])
 light3 = J3DLight([0, 0, 0], [1, -0.868448, 0.239316], [1, 1, 1, 1], [1, 1, 1], [1, 1, 1])
 
 ultra.setLight(light1, 0)
-ultra.setLight(light2, 1)
-ultra.setLight(light3, 2)
+ultra.setLight(light3, 1)
+ultra.setLight(light1, 2)
+ultra.setLight(light1, 3)
+ultra.setLight(light1, 4)
+ultra.setLight(light1, 5)
+ultra.setLight(light1, 6)
+ultra.setLight(light1, 7)
 
 model = None
 
@@ -75,13 +81,13 @@ while(not glfw.window_should_close(window)):
             cam.target[1] += 1.0
             cam.update()
         else:
-            cam.zoom(1)
+            cam.zoom(5)
     if glfw.get_key(window, glfw.KEY_E) == glfw.PRESS:
         if glfw.get_key(window, glfw.KEY_LEFT_SHIFT) == glfw.PRESS:
             cam.target[1] -= 1.0
             cam.update()
         else:
-            cam.zoom(-1)
+            cam.zoom(-5)
 
 
     glClearColor(0.25, 0.3, 0.4, 1.0)
@@ -112,7 +118,23 @@ while(not glfw.window_should_close(window)):
 
             if(clicked_open):
                 filename = askopenfilename()
-                model = ultra.loadModel(path=filename)
+                if('.szs' in filename or '.arc' in filename):
+                    arc = pyjkernel.from_archive_file(filename)
+
+                    foundModel = False
+                    for file in arc.list_files(arc.root_name):
+                        if('.bmd' in file.name or '.bdl' in file.name):
+                            model = ultra.loadModel(data=file.data)
+                            foundModel = True
+                            break
+
+                    if(not foundModel):
+                        print(f"No model found in archive {filename}")
+
+                elif('.bdl' in filename or '.bmd' in filename):
+                    model = ultra.loadModel(path=filename)
+                else:
+                    print("Couldn't load model!")
 
             imgui.end_menu()
         imgui.end_main_menu_bar()
