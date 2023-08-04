@@ -106,7 +106,9 @@ while(not glfw.window_should_close(window)):
     )
 
     if(model != None):
-        model.render(0.0)
+        model.render()
+
+    ultra.render(0.0, [cam.position[0], cam.position[1], cam.position[2]])
 
     imgui.new_frame()
 
