@@ -5,6 +5,9 @@ set(CMAKE_BUILD_TYPE Debug)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+# Python version to build for
+# set(PYBIND11_PYTHON_VERSION "3.11")
+
 add_subdirectory(pybind11)
 add_subdirectory(J3DUltra)
 

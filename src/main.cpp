@@ -5,6 +5,7 @@
 #include <J3D/J3DModelLoader.hpp>
 #include <J3D/J3DModelData.hpp>
 #include <J3D/J3DUniformBufferObject.hpp>
+#include <J3D/J3DRendering.hpp>
 #include <J3D/J3DLight.hpp>
 #include <J3D/J3DModelInstance.hpp>
 #include <bstream.h>
@@ -17,6 +18,7 @@ using namespace py::literals;
 
 static bool init = false;
 static J3DLight lights[8] = {};
+static std::vector<std::shared_ptr<J3DModelInstance>> renderBatch = {};
 
 bool InitJ3DUltra(){
     if(!init){
@@ -27,6 +29,13 @@ bool InitJ3DUltra(){
  
             for (int i = 0; i < 8; i++) lights[i].Color = glm::vec4(1, 1, 1, 1);
             J3DUniformBufferObject::SetLights(lights);
+
+            //set default sort
+            J3DRendering::SetSortFunction([](J3DRendering::SortFunctionArgs args){
+                std::sort(args.begin(), args.end(), [](const J3DRenderPacket& a, const J3DRenderPacket& b) -> bool {
+                    return a.SortKey > b.SortKey;
+                });
+            });
 
             return true;
         }
@@ -98,6 +107,17 @@ void setScale(std::shared_ptr<J3DModelInstance> instance, float x, float y, floa
     instance->SetScale(glm::vec3(x, y, z));
 }
 
+void renderModel(std::shared_ptr<J3DModelInstance> instance){
+    renderBatch.push_back(instance);
+}
+
+void RenderScene(float dt, std::array<float, 3> cameraPos){
+    if(init){
+        J3DRendering::Render(dt, glm::vec3(cameraPos.at(0), cameraPos.at(1), cameraPos.at(2)), renderBatch);
+        renderBatch.clear();
+    }
+}
+
 PYBIND11_MODULE(J3DUltra, m) {
     m.doc() = "J3DUltra";
 
@@ -148,7 +168,7 @@ PYBIND11_MODULE(J3DUltra, m) {
 
     py::class_<J3DModelInstance, std::shared_ptr<J3DModelInstance>>(m, "J3DModelInstance")
         .def(py::init<std::shared_ptr<J3DModelData>>())
-        .def("render", &J3DModelInstance::Render)
+        .def("render", &renderModel)
         // These don't work yet
         .def("setTranslation", &setTranslation)
         .def("setRotation", &setRotation)
@@ -161,4 +181,6 @@ PYBIND11_MODULE(J3DUltra, m) {
     m.def("cleanup", &CleanupJ3DUltra, "Cleanup J3DUltra Library");
     m.def("setCamera", &SetCamera, "Set Projection and View Matrices to render with");
     m.def("setLight", &SetLight, "Set Scene Light for J3D Render Functions");
+
+    m.def("render", &RenderScene, "Execute all pending model renders");
 }
