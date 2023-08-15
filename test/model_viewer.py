@@ -31,6 +31,7 @@ glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 6)
 glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
 glfw.window_hint(glfw.OPENGL_DEBUG_CONTEXT, glfw.TRUE)
 glfw.window_hint(glfw.DEPTH_BITS, 24)
+glfw.window_hint(glfw.SAMPLES, 4)
 
 window = glfw.create_window(1280, 720, "J3DUltra Test", None, None)
 
@@ -45,23 +46,18 @@ if(not ultra.init()):
     glfw.terminate()
     raise Exception("Couldn't init J3DUltra")
 
-light1 = J3DLight([0, 0, 0], [0, 0, 0], [1, 1, 1, 1], [1, 1, 1], [1, 1, 1])
-light3 = J3DLight([0, 0, 0], [1, -0.868448, 0.239316], [1, 1, 1, 1], [1, 1, 1], [1, 1, 1])
-
-ultra.setLight(light1, 0)
-ultra.setLight(light3, 1)
-ultra.setLight(light1, 2)
-ultra.setLight(light1, 3)
-ultra.setLight(light1, 4)
-ultra.setLight(light1, 5)
-ultra.setLight(light1, 6)
-ultra.setLight(light1, 7)
+light0 = J3DLight([100000.0, 100000.0, 100000.0], [1, 0, 0], [0.5, 0.5, 0.5, 0.0], [1, 0, 0], [1, 0, 0], False)
+light1 = J3DLight([-100000.0, -100000.0, 100000.0], [1, 0, 0], [64/255, 62/255, 64/255, 0.0], [1, 0, 0], [1, 0, 0], False)
+light2 = J3DLight([0, 0, 0], [0, -1, 0], [0, 0, 0, 0.5], [1, 0, 0], [1, 0, 0], True)
 
 model = None
 
 imgui.create_context()
 imgui.get_io().fonts.get_tex_data_as_rgba32()
 impl = GlfwRenderer(window)
+
+frame = 0;
+wasPressed = False
 
 while(not glfw.window_should_close(window)):
     glfw.poll_events()
@@ -88,6 +84,14 @@ while(not glfw.window_should_close(window)):
             cam.update()
         else:
             cam.zoom(-5)
+
+    if glfw.get_key(window, glfw.KEY_SPACE) == glfw.PRESS:
+        wasPressed = True
+
+    if glfw.get_key(window, glfw.KEY_SPACE) == glfw.RELEASE and wasPressed and model is not None and model.getBrk() is not None:
+        frame += 1
+        model.getBrk().setFrame(frame % 5, True)
+        wasPressed = False
 
 
     glClearColor(0.25, 0.3, 0.4, 1.0)
@@ -118,6 +122,14 @@ while(not glfw.window_should_close(window)):
                 "Open", "Cmd+O", False, True
             )
 
+            if(model is not None):
+                clicked_open_brk, selected_open = imgui.menu_item(
+                    "Open Brk Animation", "", False, True
+                )
+
+                if(clicked_open_brk):
+                    filename = askopenfilename()
+
             if(clicked_open):
                 filename = askopenfilename()
                 if('.szs' in filename or '.arc' in filename):
@@ -127,14 +139,24 @@ while(not glfw.window_should_close(window)):
                     for file in arc.list_files(arc.root_name):
                         if('.bmd' in file.name or '.bdl' in file.name):
                             model = ultra.loadModel(data=file.data)
+                            model.setLight(light0, 0)
+                            model.setLight(light1, 1)
+                            model.setLight(light2, 2)
                             foundModel = True
                             break
 
                     if(not foundModel):
                         print(f"No model found in archive {filename}")
+                    else:
+                        for file in arc.list_files(arc.root_name):
+                            if('.brk' in file.name):
+                                model.attachBrk(data=file.data)
+                                model.getBrk().setFrame(0, True)
+                                break
 
                 elif('.bdl' in filename or '.bmd' in filename):
                     model = ultra.loadModel(path=filename)
+
                 else:
                     print("Couldn't load model!")
 

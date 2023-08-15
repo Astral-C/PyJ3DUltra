@@ -5,6 +5,8 @@
 #include <J3D/J3DModelLoader.hpp>
 #include <J3D/J3DModelData.hpp>
 #include <J3D/J3DUniformBufferObject.hpp>
+#include <J3D/Animation/J3DColorAnimationInstance.hpp>
+#include <J3D/Animation/J3DAnimationLoader.hpp>
 #include <J3D/J3DRendering.hpp>
 #include <J3D/J3DLight.hpp>
 #include <J3D/J3DModelInstance.hpp>
@@ -84,8 +86,7 @@ std::shared_ptr<J3DModelInstance> LoadJ3DModel(py::bytes data){
     J3DModelLoader Loader;
     bStream::CMemoryStream modelStream((uint8_t*)dataInfo.ptr, dataInfo.size, bStream::Endianess::Big, bStream::OpenMode::In);
     
-    std::shared_ptr<J3DModelData> modelData = std::make_shared<J3DModelData>();
-    modelData = Loader.Load(&modelStream, NULL);
+    std::shared_ptr<J3DModelData> modelData = Loader.Load(&modelStream, NULL);
 
     return modelData->GetInstance();
 }
@@ -106,7 +107,56 @@ void renderModel(std::shared_ptr<J3DModelInstance> instance){
     renderBatch.push_back(instance);
 }
 
-void SetLight(std::shared_ptr<J3DModelInstance> instance, J3DLight light, int lightIdx){
+void attachBrk(std::shared_ptr<J3DModelInstance> instance, py::bytes data){
+    if(!init) return;
+
+    py::buffer_info dataInfo(py::buffer(data).request());
+
+    J3DAnimation::J3DAnimationLoader Loader;
+    std::shared_ptr<J3DAnimation::J3DAnimationInstance> animLoaded = Loader.LoadAnimation(dataInfo.ptr, dataInfo.size);
+    std::shared_ptr<J3DAnimation::J3DColorAnimationInstance> animInstance = std::dynamic_pointer_cast<J3DAnimation::J3DColorAnimationInstance>(animLoaded);
+
+    instance->SetRegisterColorAnimation(animInstance);
+}
+
+void attachBrk(std::shared_ptr<J3DModelInstance> instance, std::string path){
+    if(!init) return;
+
+    J3DAnimation::J3DAnimationLoader Loader;
+    
+    std::shared_ptr<J3DAnimation::J3DColorAnimationInstance> animInstance = Loader.LoadAnimation<J3DAnimation::J3DColorAnimationInstance>(path);
+
+    instance->SetRegisterColorAnimation(animInstance);
+}
+
+void attachBrk(std::shared_ptr<J3DModelInstance> instance, std::shared_ptr<J3DAnimation::J3DColorAnimationInstance> anim){
+    if(!init) return;
+    instance->SetRegisterColorAnimation(anim);
+}
+
+std::shared_ptr<J3DAnimation::J3DColorAnimationInstance> LoadBrk(py::bytes data){
+    if(!init) return nullptr;
+
+    py::buffer_info dataInfo(py::buffer(data).request());
+
+    J3DAnimation::J3DAnimationLoader Loader;
+    std::shared_ptr<J3DAnimation::J3DAnimationInstance> animLoaded = Loader.LoadAnimation(dataInfo.ptr, dataInfo.size);
+    std::shared_ptr<J3DAnimation::J3DColorAnimationInstance> animInstance = std::dynamic_pointer_cast<J3DAnimation::J3DColorAnimationInstance>(animLoaded);
+
+    return animInstance;
+}
+
+std::shared_ptr<J3DAnimation::J3DColorAnimationInstance> LoadBrk(std::string path){
+    if(!init) return nullptr;
+
+    J3DAnimation::J3DAnimationLoader Loader;
+    
+    std::shared_ptr<J3DAnimation::J3DColorAnimationInstance> animInstance = Loader.LoadAnimation<J3DAnimation::J3DColorAnimationInstance>(path);
+
+    return animInstance;
+}
+
+void setLight(std::shared_ptr<J3DModelInstance> instance, J3DLight light, int lightIdx){
     instance->SetLight(light, lightIdx);
 }
 
@@ -144,10 +194,10 @@ PYBIND11_MODULE(J3DUltra, m) {
 
     py::class_<J3DLight>(m, "J3DLight")
         .def(py::init<>())
-        .def(py::init([](std::array<float, 3> position, std::array<float, 3> direction, std::array<float, 4> color, std::array<float, 3> angle_atten, std::array<float, 3> dist_atten){
+        .def(py::init([](std::array<float, 3> position, std::array<float, 3> direction, std::array<float, 4> color, std::array<float, 3> angle_atten, std::array<float, 3> dist_atten, bool followCamera){
             J3DLight light;
 
-            light.Position = glm::vec4(position[0], position[1], position[2], 1);
+            light.Position = glm::vec4(position[0], position[1], position[2], followCamera ? 0 : 1);
             light.Direction = glm::vec4(direction[0], direction[1], direction[2], 1);
             light.Color = glm::vec4(color[0], color[1], color[2], color[3]);
             light.AngleAtten = glm::vec4(angle_atten[0], angle_atten[1], angle_atten[2], 1);;
@@ -165,17 +215,30 @@ PYBIND11_MODULE(J3DUltra, m) {
         .def(py::init<>())
         .def("getInstance", &J3DModelData::GetInstance);
 
+    py::class_<J3DAnimation::J3DColorAnimationInstance, std::shared_ptr<J3DAnimation::J3DColorAnimationInstance>>(m, "J3DColorAnimation")
+        .def(py::init<>())
+        .def("setFrame", &J3DAnimation::J3DAnimationInstance::SetFrame)
+        .def("getFrame", &J3DAnimation::J3DAnimationInstance::GetFrame);
+
     py::class_<J3DModelInstance, std::shared_ptr<J3DModelInstance>>(m, "J3DModelInstance")
         .def(py::init<std::shared_ptr<J3DModelData>>())
         .def("render", &renderModel)
-        .def("setLight", &SetLight, "Set Scene Light for J3D Render Functions")
+        .def("setLight", &setLight, "Set Scene Light for J3D Render Functions")
         // These don't work yet
         .def("setTranslation", &setTranslation)
         .def("setRotation", &setRotation)
-        .def("setScale", &setScale);
+        .def("setScale", &setScale)
+        .def("attachBrk", py::overload_cast<std::shared_ptr<J3DModelInstance>, py::bytes>(&attachBrk), py::kw_only(), py::arg("data"))
+        .def("attachBrk", py::overload_cast<std::shared_ptr<J3DModelInstance>, std::string>(&attachBrk), py::kw_only(), py::arg("path"))
+        .def("attachBrk", &J3DModelInstance::SetRegisterColorAnimation, py::kw_only(), py::arg("anim"))
+        .def("getBrk", &J3DModelInstance::GetRegisterColorAnimation);
+        
 
-    m.def("loadModel", py::overload_cast<std::string>(&LoadJ3DModel), "Load BMD/BDL from filepath", py::kw_only(), pybind11::arg("path"));
-    m.def("loadModel", py::overload_cast<py::bytes>(&LoadJ3DModel), "Load BMD/BDL from bytes object", py::kw_only(), pybind11::arg("data"));
+    m.def("loadModel", py::overload_cast<std::string>(&LoadJ3DModel), "Load BMD/BDL from filepath", py::kw_only(), py::arg("path"));
+    m.def("loadModel", py::overload_cast<py::bytes>(&LoadJ3DModel), "Load BMD/BDL from bytes object", py::kw_only(), py::arg("data"));
+    
+    m.def("loadBrk", py::overload_cast<std::string>(&LoadBrk), "Load BMD/BDL from filepath", py::kw_only(), py::arg("path"));
+    m.def("loadBrk", py::overload_cast<py::bytes>(&LoadBrk), "Load BMD/BDL from bytes object", py::kw_only(), py::arg("data"));
 
     m.def("init", &InitJ3DUltra, "Setup J3DUltra for Model Loading and Rendering");
     m.def("cleanup", &CleanupJ3DUltra, "Cleanup J3DUltra Library");
