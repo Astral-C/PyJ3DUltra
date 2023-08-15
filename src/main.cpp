@@ -53,11 +53,6 @@ void SetCamera(std::vector<float> proj, std::vector<float> view){
     J3DUniformBufferObject::SetProjAndViewMatrices(&projection, &viewm4);
 }
 
-void SetLight(J3DLight light, int lightIdx){
-    lights[lightIdx] = light;
-    J3DUniformBufferObject::SetLights(lights);
-}
-
 void CleanupJ3DUltra(){
     if(init){
         J3DUniformBufferObject::DestroyUBO();
@@ -109,6 +104,10 @@ void setScale(std::shared_ptr<J3DModelInstance> instance, float x, float y, floa
 
 void renderModel(std::shared_ptr<J3DModelInstance> instance){
     renderBatch.push_back(instance);
+}
+
+void SetLight(std::shared_ptr<J3DModelInstance> instance, J3DLight light, int lightIdx){
+    instance->SetLight(light, lightIdx);
 }
 
 void RenderScene(float dt, std::array<float, 3> cameraPos){
@@ -169,6 +168,7 @@ PYBIND11_MODULE(J3DUltra, m) {
     py::class_<J3DModelInstance, std::shared_ptr<J3DModelInstance>>(m, "J3DModelInstance")
         .def(py::init<std::shared_ptr<J3DModelData>>())
         .def("render", &renderModel)
+        .def("setLight", &SetLight, "Set Scene Light for J3D Render Functions")
         // These don't work yet
         .def("setTranslation", &setTranslation)
         .def("setRotation", &setRotation)
@@ -180,7 +180,6 @@ PYBIND11_MODULE(J3DUltra, m) {
     m.def("init", &InitJ3DUltra, "Setup J3DUltra for Model Loading and Rendering");
     m.def("cleanup", &CleanupJ3DUltra, "Cleanup J3DUltra Library");
     m.def("setCamera", &SetCamera, "Set Projection and View Matrices to render with");
-    m.def("setLight", &SetLight, "Set Scene Light for J3D Render Functions");
 
     m.def("render", &RenderScene, "Execute all pending model renders");
 }
