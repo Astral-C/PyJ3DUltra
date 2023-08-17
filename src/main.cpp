@@ -19,8 +19,8 @@ namespace py = pybind11;
 using namespace py::literals;
 
 static bool init = false;
-static J3DLight lights[8] = {};
 static std::vector<std::shared_ptr<J3DModelInstance>> renderBatch = {};
+static glm::mat4 viewMtx = {}, projMtx = {};
 
 bool InitJ3DUltra(){
     if(!init){
@@ -29,9 +29,6 @@ bool InitJ3DUltra(){
  
             J3DUniformBufferObject::CreateUBO();
  
-            for (int i = 0; i < 8; i++) lights[i].Color = glm::vec4(1, 1, 1, 1);
-            J3DUniformBufferObject::SetLights(lights);
-
             //set default sort
             J3DRendering::SetSortFunction([](J3DRendering::SortFunctionArgs args){
                 std::sort(args.begin(), args.end(), [](const J3DRenderPacket& a, const J3DRenderPacket& b) -> bool {
@@ -47,17 +44,23 @@ bool InitJ3DUltra(){
 }
 
 void SetCamera(std::vector<float> proj, std::vector<float> view){
-    glm::mat4 projection, viewm4;
+    if(init){
+        glm::mat4 projection, viewm4;
 
-    projection = glm::make_mat4(proj.data());
-    viewm4 = glm::make_mat4(view.data());
+        projection = glm::make_mat4(proj.data());
+        viewm4 = glm::make_mat4(view.data());
 
-    J3DUniformBufferObject::SetProjAndViewMatrices(&projection, &viewm4);
+        viewMtx = viewm4;
+        projMtx = projection;
+
+        J3DUniformBufferObject::SetProjAndViewMatrices(&projection, &viewm4);
+    }
 }
 
 void CleanupJ3DUltra(){
     if(init){
         J3DUniformBufferObject::DestroyUBO();
+        renderBatch.clear();
     }
 }
 
@@ -162,7 +165,7 @@ void setLight(std::shared_ptr<J3DModelInstance> instance, J3DLight light, int li
 
 void RenderScene(float dt, std::array<float, 3> cameraPos){
     if(init){
-        J3DRendering::Render(dt, glm::vec3(cameraPos.at(0), cameraPos.at(1), cameraPos.at(2)), renderBatch);
+        J3DRendering::Render(dt, glm::vec3(cameraPos.at(0), cameraPos.at(1), cameraPos.at(2)), viewMtx, projMtx, renderBatch);
         renderBatch.clear();
     }
 }
