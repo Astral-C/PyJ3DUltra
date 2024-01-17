@@ -3,13 +3,13 @@
 #include <pybind11/stl.h>
 
 #include <J3D/J3DModelLoader.hpp>
-#include <J3D/J3DModelData.hpp>
-#include <J3D/J3DUniformBufferObject.hpp>
+#include <J3D/Data/J3DModelData.hpp>
+#include <J3D/Material/J3DUniformBufferObject.hpp>
 #include <J3D/Animation/J3DColorAnimationInstance.hpp>
 #include <J3D/Animation/J3DAnimationLoader.hpp>
-#include <J3D/J3DRendering.hpp>
-#include <J3D/J3DLight.hpp>
-#include <J3D/J3DModelInstance.hpp>
+#include <J3D/Rendering/J3DRendering.hpp>
+#include <J3D/Rendering/J3DLight.hpp>
+#include <J3D/Data/J3DModelInstance.hpp>
 #include <bstream.h>
 
 #include <glad/glad.h>
@@ -53,7 +53,7 @@ void SetCamera(std::vector<float> proj, std::vector<float> view){
         viewMtx = viewm4;
         projMtx = projection;
 
-        J3DUniformBufferObject::SetProjAndViewMatrices(&projection, &viewm4);
+        J3DUniformBufferObject::SetProjAndViewMatrices(projection, viewm4);
     }
 }
 
@@ -78,7 +78,7 @@ std::shared_ptr<J3DModelInstance> LoadJ3DModel(std::string path){
     std::shared_ptr<J3DModelData> data = std::make_shared<J3DModelData>();
     data = Loader.Load(&modelStream, NULL);
 
-    return data->GetInstance();
+    return data->CreateInstance();
 }
 
 std::shared_ptr<J3DModelInstance> LoadJ3DModel(py::bytes data){
@@ -91,7 +91,7 @@ std::shared_ptr<J3DModelInstance> LoadJ3DModel(py::bytes data){
     
     std::shared_ptr<J3DModelData> modelData = Loader.Load(&modelStream, NULL);
 
-    return modelData->GetInstance();
+    return modelData->CreateInstance();
 }
 
 void setTranslation(std::shared_ptr<J3DModelInstance> instance, float x, float y, float z){
@@ -216,7 +216,7 @@ PYBIND11_MODULE(J3DUltra, m) {
 
     py::class_<J3DModelData, std::shared_ptr<J3DModelData>>(m, "J3DModelData")
         .def(py::init<>())
-        .def("getInstance", &J3DModelData::GetInstance);
+        .def("createInstance", &J3DModelData::CreateInstance);
 
     py::class_<J3DAnimation::J3DColorAnimationInstance, std::shared_ptr<J3DAnimation::J3DColorAnimationInstance>>(m, "J3DColorAnimation")
         .def(py::init<>())
