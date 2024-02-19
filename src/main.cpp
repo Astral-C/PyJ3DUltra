@@ -415,12 +415,20 @@ void setLight(std::shared_ptr<J3DModelInstance> instance, J3DLight light, int li
     instance->SetLight(light, lightIdx);
 }
 
+bool isClicked(std::shared_ptr<J3DModelInstance> instance, uint32_t x, uint32_t y){
+    if(J3D::Picking::IsPickingEnabled()) return std::get<0>(J3D::Picking::Query(x,y)) == instance->GetModelId();
+}
+
 std::tuple<uint16_t, uint16_t> QueryPicking(uint32_t x, uint32_t y){
     if(J3D::Picking::IsPickingEnabled()) return J3D::Picking::Query(x,y);
 }
 
 void InitPicking(uint32_t w, uint32_t h){
     J3D::Picking::InitFramebuffer(w, h);
+}
+
+void ResizePickingFB(uint32_t w, uint32_t h){
+    if(J3D::Picking::IsPickingEnabled()) J3D::Picking::ResizeFramebuffer(w, h);
 }
 
 void RenderScene(float dt, std::array<float, 3> cameraPos, bool renderPicking = false){
@@ -514,6 +522,7 @@ PYBIND11_MODULE(J3DUltra, m) {
         .def("setTranslation", &setTranslation)
         .def("setRotation", &setRotation)
         .def("setScale", &setScale)
+        .def("isClicked", &isClicked)
         .def("attachBrk", py::overload_cast<std::shared_ptr<J3DModelInstance>, py::bytes>(&attachBrk), py::kw_only(), py::arg("data"))
         .def("attachBrk", py::overload_cast<std::shared_ptr<J3DModelInstance>, std::string>(&attachBrk), py::kw_only(), py::arg("path"))
         .def("attachBrk", &J3DModelInstance::SetRegisterColorAnimation, py::kw_only(), py::arg("anim"))
@@ -562,6 +571,7 @@ PYBIND11_MODULE(J3DUltra, m) {
     
     m.def("render", &RenderScene, "Execute all pending model renders");
 
+    m.def("resizePicking", &ResizePickingFB, "");
     m.def("queryPicking", &QueryPicking, "");
     m.def("initPicking", &InitPicking, "");
 }
