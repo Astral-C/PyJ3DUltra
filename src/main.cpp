@@ -13,6 +13,7 @@
 #include <J3D/Animation/J3DVisibilityAnimationInstance.hpp>
 #include <J3D/Animation/J3DAnimationLoader.hpp>
 #include <J3D/Rendering/J3DRendering.hpp>
+#include <J3D/Picking/J3DPicking.hpp>
 #include <J3D/Rendering/J3DLight.hpp>
 #include <J3D/Data/J3DModelInstance.hpp>
 #include <bstream.h>
@@ -35,7 +36,7 @@ bool InitJ3DUltra(){
             J3DUniformBufferObject::CreateUBO();
  
             //set default sort
-            J3DRendering::SetSortFunction([](J3DRendering::SortFunctionArgs args){
+            J3D::Rendering::SetSortFunction([](J3D::Rendering::RenderPacketVector args){
                 std::sort(args.begin(), args.end(), [](const J3DRenderPacket& a, const J3DRenderPacket& b) -> bool {
                     return a.SortKey > b.SortKey;
                 });
@@ -66,6 +67,7 @@ void CleanupJ3DUltra(){
     if(init){
         J3DUniformBufferObject::DestroyUBO();
         renderBatch.clear();
+        if(J3D::Picking::IsPickingEnabled()) J3D::Picking::DestroyFramebuffer();
     }
 }
 
@@ -413,9 +415,21 @@ void setLight(std::shared_ptr<J3DModelInstance> instance, J3DLight light, int li
     instance->SetLight(light, lightIdx);
 }
 
-void RenderScene(float dt, std::array<float, 3> cameraPos){
+std::tuple<uint16_t, uint16_t> QueryPicking(uint32_t x, uint32_t y){
+    if(J3D::Picking::IsPickingEnabled()) return J3D::Picking::Query(x,y);
+}
+
+void InitPicking(uint32_t w, uint32_t h){
+    J3D::Picking::InitFramebuffer(w, h);
+}
+
+void RenderScene(float dt, std::array<float, 3> cameraPos, bool renderPicking = false){
     if(init){
-        J3DRendering::Render(dt, glm::vec3(cameraPos.at(0), cameraPos.at(1), cameraPos.at(2)), viewMtx, projMtx, renderBatch);
+        auto sortedPackets = J3D::Rendering::SortPackets(renderBatch, glm::vec3(cameraPos.at(0), cameraPos.at(1), cameraPos.at(2))); 
+        J3D::Rendering::Render(dt, viewMtx, projMtx, sortedPackets);
+        
+        if(J3D::Picking::IsPickingEnabled() && renderPicking) J3D::Picking::RenderPickingScene(viewMtx, projMtx, sortedPackets);
+
         renderBatch.clear();
     }
 }
@@ -493,7 +507,7 @@ PYBIND11_MODULE(J3DUltra, m) {
         .def(py::init<>());
 
     py::class_<J3DModelInstance, std::shared_ptr<J3DModelInstance>>(m, "J3DModelInstance")
-        .def(py::init<std::shared_ptr<J3DModelData>>())
+        .def(py::init<std::shared_ptr<J3DModelData>, uint16_t>())
         .def("render", &renderModel)
         .def("setLight", &setLight, "Set Scene Light for J3D Render Functions")
         // These don't work yet
@@ -547,4 +561,7 @@ PYBIND11_MODULE(J3DUltra, m) {
     m.def("setCamera", &SetCamera, "Set Projection and View Matrices to render with");
     
     m.def("render", &RenderScene, "Execute all pending model renders");
+
+    m.def("queryPicking", &QueryPicking, "");
+    m.def("initPicking", &InitPicking, "");
 }
