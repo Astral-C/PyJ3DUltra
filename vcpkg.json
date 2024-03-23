@@ -2,7 +2,5 @@
     "name" : "pyj3dultra",
     "version-string" : "pyj3dultra-win",
     "dependencies": [
-        "zlib",
-        "libpng"
     ]
 }
