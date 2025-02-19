@@ -10,7 +10,10 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15)
 
 # Python version to build for
-# set(PYBIND11_PYTHON_VERSION "3.11")
+set(PYBIND11_PYTHON_VERSION "3.11")
+set(PYTHON_EXECUTABLE /usr/bin/python3.11)
+
+add_compile_definitions(-DGLM_ENABLE_EXPERIMENTAL)
 
 add_subdirectory(pybind11)
 add_subdirectory(J3DUltra)

@@ -5,6 +5,11 @@
 #include <J3D/J3DModelLoader.hpp>
 #include <J3D/Data/J3DModelData.hpp>
 #include <J3D/Material/J3DUniformBufferObject.hpp>
+#include <J3D/Rendering/J3DLight.hpp>
+#include <J3D/Data/J3DModelInstance.hpp>
+
+#include <J3D/Picking/J3DPicking.hpp>
+
 #include <J3D/Animation/J3DColorAnimationInstance.hpp>
 #include <J3D/Animation/J3DTexIndexAnimationInstance.hpp>
 #include <J3D/Animation/J3DTexMatrixAnimationInstance.hpp>
@@ -12,10 +17,6 @@
 #include <J3D/Animation/J3DJointFullAnimationInstance.hpp>
 #include <J3D/Animation/J3DVisibilityAnimationInstance.hpp>
 #include <J3D/Animation/J3DAnimationLoader.hpp>
-#include <J3D/Rendering/J3DRendering.hpp>
-#include <J3D/Picking/J3DPicking.hpp>
-#include <J3D/Rendering/J3DLight.hpp>
-#include <J3D/Data/J3DModelInstance.hpp>
 #include <bstream.h>
 
 #include <glad/glad.h>
@@ -28,6 +29,44 @@ static bool init = false;
 static std::vector<std::shared_ptr<J3DModelInstance>> renderBatch = {};
 static glm::mat4 viewMtx = {}, projMtx = {};
 
+void DefaultSortFunc(J3D::Rendering::RenderPacketVector& packets) {
+	std::vector<J3DRenderPacket> opaquePackets;
+	std::vector<J3DRenderPacket> xluPackets;
+
+	for (J3DRenderPacket packet : packets) {
+		if ((packet.SortKey & 0x00800000) != 0) {
+			opaquePackets.push_back(packet);
+		}
+		else {
+			xluPackets.push_back(packet);
+		}
+	}
+
+	std::sort(
+		opaquePackets.begin(),
+		opaquePackets.end(),
+		[](const J3DRenderPacket& a, const J3DRenderPacket& b) -> bool {
+			return a.Material->Name < b.Material->Name;
+		}
+	);
+	std::sort(
+		xluPackets.begin(),
+		xluPackets.end(),
+		[](const J3DRenderPacket& a, const J3DRenderPacket& b) -> bool {
+			return a.Material->Name < b.Material->Name;
+		}
+	);
+
+	packets.clear();
+
+	for (J3DRenderPacket packet : opaquePackets) {
+		packets.push_back(packet);
+	}
+	for (J3DRenderPacket packet : xluPackets) {
+		packets.push_back(packet);
+	}
+}
+
 bool InitJ3DUltra(){
     if(!init){
         if(gladLoadGL()){
@@ -36,11 +75,7 @@ bool InitJ3DUltra(){
             J3DUniformBufferObject::CreateUBO();
  
             //set default sort
-            J3D::Rendering::SetSortFunction([](J3D::Rendering::RenderPacketVector args){
-                std::sort(args.begin(), args.end(), [](const J3DRenderPacket& a, const J3DRenderPacket& b) -> bool {
-                    return a.SortKey > b.SortKey;
-                });
-            });
+            J3D::Rendering::SetSortFunction(DefaultSortFunc);
 
             return true;
         }
@@ -416,7 +451,8 @@ void setLight(std::shared_ptr<J3DModelInstance> instance, J3DLight light, int li
 }
 
 bool isClicked(std::shared_ptr<J3DModelInstance> instance, uint32_t x, uint32_t y){
-    if(J3D::Picking::IsPickingEnabled()) return std::get<0>(J3D::Picking::Query(x,y)) == instance->GetModelId();
+    //if(J3D::Picking::IsPickingEnabled()) return std::get<0>(J3D::Picking::Query(x,y)) == instance->GetModelId();
+    return false;
 }
 
 std::tuple<uint16_t, uint16_t> QueryPicking(uint32_t x, uint32_t y){
@@ -433,7 +469,8 @@ void ResizePickingFB(uint32_t w, uint32_t h){
 
 void RenderScene(float dt, std::array<float, 3> cameraPos, bool renderPicking = false){
     if(init){
-        auto sortedPackets = J3D::Rendering::SortPackets(renderBatch, glm::vec3(cameraPos.at(0), cameraPos.at(1), cameraPos.at(2))); 
+        glDepthMask(true); // gotta make sure the depth mask is ON!
+        auto sortedPackets = J3D::Rendering::SortPackets(renderBatch, glm::vec3(cameraPos.at(0), cameraPos.at(1), cameraPos.at(2)));
         J3D::Rendering::Render(dt, viewMtx, projMtx, sortedPackets);
         
         if(J3D::Picking::IsPickingEnabled() && renderPicking) J3D::Picking::RenderPickingScene(viewMtx, projMtx, sortedPackets);
@@ -514,6 +551,11 @@ PYBIND11_MODULE(J3DUltra, m) {
     py::class_<J3DAnimation::J3DVisibilityAnimationInstance, std::shared_ptr<J3DAnimation::J3DVisibilityAnimationInstance>, J3DAnimation::J3DAnimationInstance>(m, "J3DVisibilityAnimation")
         .def(py::init<>());
 
+    py::class_<J3DMaterial, std::shared_ptr<J3DMaterial>>(m, "J3DMaterial")
+        .def(py::init<>())
+        .def_readwrite("name", &J3DMaterial::Name);
+        //.def("getId", &J3DMaterial::GetMaterialId);
+
     py::class_<J3DModelInstance, std::shared_ptr<J3DModelInstance>>(m, "J3DModelInstance")
         .def(py::init<std::shared_ptr<J3DModelData>, uint16_t>())
         .def("render", &renderModel)
@@ -547,7 +589,7 @@ PYBIND11_MODULE(J3DUltra, m) {
         .def("attachBva", py::overload_cast<std::shared_ptr<J3DModelInstance>, std::string>(&attachBva), py::kw_only(), py::arg("path"))
         .def("attachBva", &J3DModelInstance::SetVisibilityAnimation, py::kw_only(), py::arg("anim"))
         .def("getBva", &J3DModelInstance::GetVisibilityAnimation)
-        ;
+    ;
     
     m.def("loadModel", py::overload_cast<std::string>(&LoadJ3DModel), "Load BMD/BDL from filepath", py::kw_only(), py::arg("path"));
     m.def("loadModel", py::overload_cast<py::bytes>(&LoadJ3DModel), "Load BMD/BDL from bytes object", py::kw_only(), py::arg("data"));

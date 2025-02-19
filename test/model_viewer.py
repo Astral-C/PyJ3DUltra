@@ -104,6 +104,7 @@ if __name__ == "__main__":
             wasPressed = False
 
 
+        glDepthMask(True)
         glClearColor(0.25, 0.3, 0.4, 1.0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
@@ -126,8 +127,12 @@ if __name__ == "__main__":
             ultra.render(0.0, [cam.position[0], cam.position[1], cam.position[2]], True)
             pos = imgui.get_mouse_pos()
             _, h = glfw.get_framebuffer_size(window)
-            if(model is not None and model.isClicked(int(pos.x), h - int(pos.y))):
+            modelID, matID = ultra.queryPicking(int(pos.x), h - int(pos.y))
+            if(model is not None and modelID == model.getId()):
                 print("Clicked Model")
+                for material in model.getMaterials():
+                    if(matID == material.getId()):
+                        print(f"Clicked Material {material.name}")
         else:
             ultra.render(0.0, [cam.position[0], cam.position[1], cam.position[2]], False)
 
